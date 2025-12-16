@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Presupuesto</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Navbar -->
+    <header class="navbar">
+        <button class="nav-btn active" data-target="add">➕</button>
+        <button class="nav-btn" data-target="categories">📁</button>
+        <button class="nav-btn" data-target="records">📃</button>
+        <button class="nav-btn" data-target="report">📊</button>
+        <button class="nav-btn" data-target="profile">👤</button>
+    </header>
+
+
+  <!-- App -->
+  <main class="app">
+
+    <!-- Vista: Agregar movimiento -->
+    <section class="view active" data-view="add">
+
+      <h1>Nuevo movimiento</h1>
+
+        <form class="form" id="transactionForm">
+        <label>
+            Descripción (opcional)
+            <input type="text" id="txDescription" placeholder="Ej: Almuerzo" />
+        </label>
+
+        <label>
+            Categoría
+            <select id="txCategory"></select>
+        </label>
+
+        <label>
+            Monto
+            <input type="number" id="txAmount" placeholder="$0" />
+        </label>
+
+        <button type="submit" class="primary-btn" id="saveTxBtn" disabled>
+            Guardar
+        </button>
+        </form>
+    </section>
+
+
+    <!-- Vista: Editar movimiento -->
+    <section class="view" data-view="edit">
+    <h1>Editar movimiento</h1>
+
+    <form class="form" id="editTransactionForm">
+        <label>
+        Fecha y hora
+        <input type="text" id="editTxDate" readonly />
+        </label>
+
+        <label>
+        Descripción (opcional)
+        <input type="text" id="editTxDescription" placeholder="Ej: Almuerzo" />
+        </label>
+
+        <label>
+        Categoría
+        <select id="editTxCategory"></select>
+        </label>
+
+        <label>
+        Monto
+        <input type="number" id="editTxAmount" placeholder="$0" />
+        </label>
+
+        <button type="submit" class="primary-btn">Guardar</button>
+        <button type="button" id="cancelEditBtn" class="secondary-btn">Cancelar</button>
+    </form>
+    </section>
+
+
+
+    <!-- Vista: Categorías -->
+    <section class="view" data-view="categories">
+
+    <h1>Categorías</h1>
+
+    <div class="card">
+        <button class="secondary-btn" id="openCategoryModal">
+         ➕ Nueva categoría
+        </button>
+    </div>
+
+        <ul class="list" id="categoryList"></ul>
+    </section>
+
+
+    <!-- Vista: Registros -->
+    <section class="view" data-view="records">
+    <h1>Registros</h1>
+
+
+    <!-- Filtros compactos -->
+    <div class="filters">
+
+    <!-- Primer filtro: por mes -->
+    <div class="filter-row">
+        <label for="filterMonth">Mes:</label>
+        <input type="month" id="filterMonth" />
+    </div>
+
+    <!-- Segundo filtro: rango de fechas -->
+    <div class="filter-row">
+    <label for="filterFrom">Rango:</label>
+    <input type="date" id="filterFrom" />
+    <input type="date" id="filterTo" />
+    
+    <div class="filter-buttons">
+        <button id="clearFilter" class="secondary-btn">Todo</button>
+        <button id="applyFilter" class="secondary-btn">Filtrar</button>
+    </div>
+    </div>
+
+  <ul class="records" id="recordsList"></ul>
+</section>
+
+
+<!-- Vista: Reporte -->
+<section class="view" data-view="report">
+  <h1 id="reportTitle">Reporte presupuestal</h1>
+
+  <!-- Filtros compactos -->
+  <div class="filters">
+
+    <!-- Primer filtro: por mes -->
+    <div class="filter-row">
+      <label for="reportFilterMonth">Mes:</label>
+      <input type="month" id="reportFilterMonth" />
+    </div>
+
+    <!-- Segundo filtro: rango de fechas -->
+    <div class="filter-row">
+      <label for="reportFilterFrom">Rango:</label>
+      <input type="date" id="reportFilterFrom" />
+      <input type="date" id="reportFilterTo" />
+
+      <div class="filter-buttons">
+        <button id="reportClearFilter" class="secondary-btn">Todo</button>
+        <button id="reportApplyFilter" class="secondary-btn">Filtrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Botón de exportar Excel -->
+  <div class="report-actions">
+    <button id="exportReportBtn" class="secondary-btn">Exportar a Excel</button>
+  </div>
+
+  <!-- Tabla de reporte -->
+  <div class="report-table-container">
+    <table id="reportTable">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Categoría</th>
+          <th>Descripción</th>
+          <th>Monto</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Se llenará con JS -->
+      </tbody>
+      <tfoot>
+        <!-- Totales y balance -->
+      </tfoot>
+    </table>
+  </div>
+  </section>
+
+
+    <!-- Vista: Mi estado -->
+    <section class="view" data-view="profile">
+
+    <h1 class="center">Mi estado</h1>
+
+    <!-- Estado visual -->
+    <div class="status-card">
+
+    <!-- Imagen 1:1 -->
+    <div class="status-image">
+        <img id="statusImage" src="" alt="Estado del mes">
+    </div>
+
+    <!-- Mensaje -->
+    <p class="status-message" id="statusMessage">
+        Aquí irá el mensaje según tu estado este mes
+    </p>
+
+    <!-- Lista de categorías excedidas -->
+    <ul class="status-list" id="statusList"></ul>
+
+    </div>
+
+    <!-- Respaldo de datos -->
+    <div class="backup-actions">
+        <button id="exportBackupBtn" class="secondary-btn">
+            Exportar backup
+        </button>
+
+        <button id="importBackupBtn" class="secondary-btn">
+            Importar backup
+        </button>
+        <input
+        type="file"
+        id="importBackupInput"
+        accept="application/json"
+        style="display:none"
+        />
+    </div>
+
+    <p id="lastBackupText" class="backup-info"></p>
+
+    </section>
+
+
+  </main>
+
+    <!-- Modal -->
+    <div class="modal hidden" id="categoryModal">
+
+    <div class="modal-content">
+        <h2>Nueva categoría</h2>
+        <button class="close-btn" id="closeCategoryModal">✕</button>
+        <form class="form" id="categoryForm">
+        <label>
+            Nombre
+            <input type="text" id="categoryName" placeholder="Ej: Transporte" />
+        </label>
+
+        <label>
+            Tipo
+            <select id="categoryType">
+            <option value="expense">Egreso</option>
+            <option value="income">Ingreso</option>
+            </select>
+        </label>
+
+        <label>
+            Monto máximo (opcional)
+            <input type="number" id="categoryMaxAmount" placeholder="Ej: 500" />
+        </label>
+
+        <button type="submit" class="primary-btn">
+            Guardar
+        </button>
+        </form>
+    </div>
+    </div>
+
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
