@@ -216,52 +216,60 @@
     <!-- Vista: Mi estado -->
     <section class="view" data-view="profile">
 
-    <h1 class="center">Mi estado</h1>
+      <h1 class="center">Mi estado</h1>
 
-    <!-- Estado visual -->
-    <div class="status-card">
+      <!-- Estado visual -->
+      <div class="status-card">
 
-    <!-- Imagen 1:1 -->
-    <div class="status-image">
-        <img id="statusImage" src="" alt="Estado del mes">
-    </div>
+      <!-- Imagen 1:1 -->
+      <div class="status-image">
+          <img id="statusImage" src="" alt="Estado del mes">
+      </div>
 
-    <!-- Mensaje -->
-    <p class="status-message" id="statusMessage">
-        Aquí irá el mensaje según tu estado este mes
-    </p>
+      <!-- Mensaje -->
+      <p class="status-message" id="statusMessage">
+          Aquí irá el mensaje según tu estado este mes
+      </p>
 
-    <!-- Lista de categorías excedidas -->
-    <ul class="status-list" id="statusList"></ul>
+      <!-- Lista de categorías excedidas -->
+      <ul class="status-list" id="statusList"></ul>
 
-    </div>
+      </div>
+      <br>
+      <section class="savings-status">
+        <h2>Ahorros:  </h2>
+        <div id="savingsList" class="savings-list"></div>
+      </section>
 
-    <!-- Respaldo de datos -->
-    <div class="backup-actions">
-        <button id="exportBackupBtn" class="secondary-btn">
-            Exportar backup
+
+      <!-- Respaldo de datos -->
+      <div class="backup-actions">
+          <button id="exportBackupBtn" class="secondary-btn">
+              Exportar backup
+          </button>
+
+          <button id="importBackupBtn" class="secondary-btn">
+              Importar backup
+          </button>
+          <input
+          type="file"
+          id="importBackupInput"
+          accept="application/json"
+          style="display:none"
+          />
+      </div>
+
+      <p id="lastBackupText" class="backup-info"></p>
+
+      <br><br><br><br><br><br><br><br><br>
+      <div class="danger-zone">
+        <button id="clearAllDataBtn" class="danger-btn">
+          ⚠️ BORRAR TODOS LOS DATOS
         </button>
+      </div>
 
-        <button id="importBackupBtn" class="secondary-btn">
-            Importar backup
-        </button>
-        <input
-        type="file"
-        id="importBackupInput"
-        accept="application/json"
-        style="display:none"
-        />
-    </div>
-
-    <p id="lastBackupText" class="backup-info"></p>
-
-    <br><br><br><br><br><br><br><br><br>
-    <div class="danger-zone">
-      <button id="clearAllDataBtn" class="danger-btn">
-        ⚠️ BORRAR TODOS LOS DATOS
-      </button>
-    </div>
-
+              <br><br><br>
+        <div></div>
     </section>
 
 

@@ -415,37 +415,38 @@ function renderProfileStatus() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  // 1️⃣ Egresos del mes actual
+  //Egresos del mes actual
   const monthExpenses = transactions.filter(tx => {
     const d = new Date(tx.createdAt);
     return tx.type === 'expense' && d >= startOfMonth && d <= now;
   });
 
-  // 2️⃣ Sumar por categoría
+  //Sumar por categoría
   const expenseTotals = {};
   monthExpenses.forEach(tx => {
     expenseTotals[tx.categoryId] =
       (expenseTotals[tx.categoryId] || 0) + tx.amount;
   });
 
-  // 3️⃣ Verificar límites
+  //Verificar límites
   const exceededCategories = [];
 
   categories.forEach(cat => {
     if (
       cat.type === 'expense' &&
-      cat.maxAmount &&
-      expenseTotals[cat.id] > cat.maxAmount
+      cat.amount &&
+      (expenseTotals[cat.id] || 0) > cat.amount
     ) {
       exceededCategories.push({
         name: cat.name,
         spent: expenseTotals[cat.id],
-        limit: cat.maxAmount
+        limit: cat.amount
       });
     }
   });
 
-  // 4️⃣ Render visual
+
+  //Render visual
   if (exceededCategories.length === 0) {
     statusImage.src = 'img/feliz.png';
     statusMessage.textContent =
@@ -463,6 +464,60 @@ function renderProfileStatus() {
       statusList.appendChild(li);
     });
   }
+}
+
+
+function renderSavingsStatus() {
+  const savingsList = document.getElementById('savingsList');
+  savingsList.innerHTML = '';
+
+  const savings = categories.filter(c => c.type === 'goal');
+  if (savings.length === 0) return;
+
+  savings.forEach(goal => {
+    // transacciones del ahorro
+    const relatedTx = transactions.filter(tx => tx.categoryId === goal.id);
+
+    let saved = 0;
+    relatedTx.forEach(tx => {
+      saved += tx.type === 'income' ? tx.amount : -tx.amount;
+    });
+
+    const target = goal.amount;
+    const remaining = Math.max(target - saved, 0);
+    const progress = Math.min((saved / target) * 100, 100);
+
+    const card = document.createElement('div');
+    card.className = 'saving-card';
+
+    card.innerHTML = `
+      <div class="saving-header">
+        <h3>
+          ${goal.name} - ${formatCOP(goal.amount)}
+        </h3>
+        <span class="saving-meta">
+          ${goal.dueDate ? `⏳ ${formatDate(goal.dueDate)}` : ''}
+        </span>
+      </div>
+
+      <div class="saving-values">
+        <span>Ahorrado: ${formatCOP(saved)}</span>
+        <span>Falta: ${formatCOP(remaining)}</span>
+      </div>
+
+      <div class="progress-bar">
+        <div class="progress-fill" style="width:${progress}%"></div>
+      </div>
+    `;
+
+    savingsList.appendChild(card);
+  });
+}
+
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString();
 }
 
 
@@ -485,9 +540,13 @@ function renderEditCategorySelect(selectedCategoryId) {
   ];
 
   orderedCategories.forEach(cat => {
+    type_n = ""
+    if (cat.type == "expense") type_n = "Egreso"
+    if (cat.type === 'income') type_n = "Ingreso"
+    if (cat.type === 'goal') type_n = "Ahorro"
     const option = document.createElement('option');
     option.value = cat.id;
-    option.textContent = cat.name;
+    option.textContent = cat.name + " - " + type_n;
     option.dataset.type = cat.type;
 
     if (cat.id === selectedCategoryId) {
@@ -821,8 +880,9 @@ navButtons.forEach(button => {
 
     // ✅ VISTA PERFIL / MI ESTADO
     if (target === 'profile') {
-      renderProfileStatus();     
-      renderLastBackupInfo();  
+      renderProfileStatus();
+      renderSavingsStatus();
+      renderLastBackupInfo();
     }
   });
 });
@@ -964,6 +1024,7 @@ txForm.addEventListener('submit', e => {
   txForm.reset();
 
   renderRecords();
+  renderSavingsStatus();
 });
 
 
@@ -1027,6 +1088,7 @@ editForm.addEventListener('submit', e => {
 
   renderRecords();
   editingTransactionId = null;
+  renderSavingsStatus();
 });
 
 
@@ -1091,16 +1153,16 @@ function clearReportFilter() {
 
 clearAllDataBtn.addEventListener('click', () => {
   const confirmation = confirm(
-    '⚠️ ESTA ACCIÓN ES IRREVERSIBLE.\n\n¿Seguro que quieres continuar?'
+    '⚠️ ESTA ACCIÓN ES IRREVERSIBLE.\n\n¿Seguro que quieres continuar? Primero crea un BACKUP'
   );
 
   if (!confirmation) return;
 
   const password = prompt(
-    'Para confirmar, escribe la contraseña de seguridad:'
+    'Para confirmar, escribe "BORRAR TODO":'
   );
 
-  if (password !== '123456') {
+  if (password !== 'BORRAR TODO') {
     alert('❌ Contraseña incorrecta. No se borró nada.');
     return;
   }
