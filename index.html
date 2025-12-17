@@ -40,6 +40,16 @@
       <h1>Nuevo movimiento</h1>
 
         <form class="form" id="transactionForm">
+
+        <label>
+          Movimiento
+          <select id="txFlow" disabled>
+            <option value="">Selecciona</option>
+            <option value="income">Entrada</option>
+            <option value="expense">Salida</option>
+          </select>
+        </label>
+
         <label>
             Descripción (opcional)
             <input type="text" id="txDescription" placeholder="Ej: Almuerzo" />
@@ -70,6 +80,14 @@
         <label>
         Fecha y hora
         <input type="text" id="editTxDate" readonly />
+        </label>
+
+        <label>
+          Movimiento
+          <select id="editTxFlow" disabled>
+            <option value="income">Entrada</option>
+            <option value="expense">Salida</option>
+          </select>
         </label>
 
         <label>
@@ -104,39 +122,42 @@
          ➕ Nueva categoría
         </button>
     </div>
-
         <ul class="list" id="categoryList"></ul>
+        <br><br><br>
+        <div></div>
     </section>
 
 
     <!-- Vista: Registros -->
     <section class="view" data-view="records">
-    <h1>Registros</h1>
+      <h1>Registros</h1>
 
 
-    <!-- Filtros compactos -->
-    <div class="filters">
+      <!-- Filtros compactos -->
+      <div class="filters">
 
-    <!-- Primer filtro: por mes -->
-    <div class="filter-row">
-        <label for="filterMonth">Mes:</label>
-        <input type="month" id="filterMonth" />
-    </div>
+      <!-- Primer filtro: por mes -->
+      <div class="filter-row">
+          <label for="filterMonth">Mes:</label>
+          <input type="month" id="filterMonth" />
+      </div>
 
-    <!-- Segundo filtro: rango de fechas -->
-    <div class="filter-row">
-    <label for="filterFrom">Rango:</label>
-    <input type="date" id="filterFrom" />
-    <input type="date" id="filterTo" />
-    
-    <div class="filter-buttons">
-        <button id="clearFilter" class="secondary-btn">Todo</button>
-        <button id="applyFilter" class="secondary-btn">Filtrar</button>
-    </div>
-    </div>
+      <!-- Segundo filtro: rango de fechas -->
+      <div class="filter-row">
+      <label for="filterFrom">Rango:</label>
+      <input type="date" id="filterFrom" />
+      <input type="date" id="filterTo" />
+      
+      <div class="filter-buttons">
+          <button id="clearFilter" class="secondary-btn">Todo</button>
+          <button id="applyFilter" class="secondary-btn">Filtrar</button>
+      </div>
+      </div>
 
-  <ul class="records" id="recordsList"></ul>
-</section>
+    <ul class="records" id="recordsList"></ul>
+            <br><br><br>
+      <div></div>
+  </section>
 
 
 <!-- Vista: Reporte -->
@@ -234,6 +255,13 @@
 
     <p id="lastBackupText" class="backup-info"></p>
 
+    <br><br><br><br><br><br><br><br><br>
+    <div class="danger-zone">
+      <button id="clearAllDataBtn" class="danger-btn">
+        ⚠️ BORRAR TODOS LOS DATOS
+      </button>
+    </div>
+
     </section>
 
 
@@ -243,7 +271,7 @@
     <div class="modal hidden" id="categoryModal">
 
     <div class="modal-content">
-        <h2>Nueva categoría</h2>
+        <h2>Categoría</h2>
         <button class="close-btn" id="closeCategoryModal">✕</button>
         <form class="form" id="categoryForm">
         <label>
@@ -254,15 +282,26 @@
         <label>
             Tipo
             <select id="categoryType">
-            <option value="expense">Egreso</option>
-            <option value="income">Ingreso</option>
+              <option value="expense">Egreso</option>
+              <option value="income">Ingreso</option>
+              <option value="goal">Ahorro</option>
             </select>
         </label>
 
-        <label>
-            Monto máximo (opcional)
-            <input type="number" id="categoryMaxAmount" placeholder="Ej: 500" />
+        <label id="categoryAmountWrapper">
+          Monto
+          <input
+            type="number"
+            id="categoryMaxAmount"
+            placeholder="Ej: 50.000"
+          />
         </label>
+
+        <label id="categoryDueDateWrapper" class="hidden">
+          Fecha límite (opcional)
+          <input type="date" id="categoryDueDate" />
+        </label>
+
 
         <button type="submit" class="primary-btn">
             Guardar

@@ -19,6 +19,11 @@ const categoryNameInput = document.getElementById('categoryName');
 const categoryTypeSelect = document.getElementById('categoryType');
 const categoryList = document.getElementById('categoryList');
 
+const categoryDueDateInput = document.getElementById('categoryDueDate');
+const categoryDueDateWrapper = document.getElementById('categoryDueDateWrapper');
+const categoryAmountWrapper = document.getElementById('categoryAmountWrapper');
+
+
 const filterMonthInput = document.getElementById('filterMonth');
 const filterFromInput = document.getElementById('filterFrom');
 const filterToInput = document.getElementById('filterTo');
@@ -43,6 +48,10 @@ const reportTableFoot = document.querySelector('#reportTable tfoot');
 const exportReportBtn = document.getElementById('exportReportBtn');
 let filteredReportTransactions = null;
 exportReportBtn.disabled = true;
+
+const txFlowSelect = document.getElementById('txFlow');
+const editTxFlowSelect = document.getElementById('editTxFlow');
+
 
 // ================== PERFIL / MI ESTADO ==================
 const statusImage = document.getElementById('statusImage');
@@ -74,22 +83,47 @@ let totalsEgresosGlobal = {};
 function renderCategories() {
   categoryList.innerHTML = '';
 
-  categories.forEach(cat => {
+  const order = {
+    expense: 1,
+    income: 2,
+    goal: 3
+  };
+
+  const sortedCategories = [...categories].sort(
+    (a, b) => order[a.type] - order[b.type]
+  );
+
+  sortedCategories.forEach(cat => {
     const li = document.createElement('li');
     li.className = `list-item ${cat.type}`;
+
+    let typeLabel = 'Egreso';
+    if (cat.type === 'income') typeLabel = 'Ingreso';
+    if (cat.type === 'goal') typeLabel = 'Ahorro';
+
     li.innerHTML = `
-      <span>${cat.name}</span>
-      <small>${cat.type === 'income' ? 'Ingreso' : 'Egreso'}${cat.maxAmount ? ` - Máx: ${formatCOP(cat.maxAmount)}` : ''}</small>
+      <span style="display: flex; flex-direction: column;">
+        <span style="font-size: 16px; font-weight: bold;">${cat.name}</span>
+        <span style="font-size: 12px; color: #888888;">${typeLabel}</span>
+      </span>
+      <small>
+        ${cat.amount ? ` ${formatCOP(cat.amount)}` : ''}
+        ${cat.type === 'goal' && cat.dueDate
+          ? ` - Límite: ${new Date(cat.dueDate).toLocaleDateString('es-CO')}`
+          : ''}
+      </small>
       <div class="actions">
         <button onclick="editCategory(${cat.id})">✏️</button>
         <button onclick="deleteCategory(${cat.id})">🗑️</button>
       </div>
     `;
+
     categoryList.appendChild(li);
   });
 
   renderCategorySelect();
 }
+
 
 function renderCategorySelect() {
   txCategorySelect.innerHTML = '';
@@ -104,10 +138,20 @@ function renderCategorySelect() {
     return;
   }
 
-  categories.forEach(cat => {
+  const order = { expense: 1, income: 2, goal: 3 };
+
+  const sorted = [...categories].sort(
+    (a, b) => order[a.type] - order[b.type]
+  );
+
+  sorted.forEach(cat => {
     const option = document.createElement('option');
     option.value = cat.id;
-    option.textContent = cat.name;
+    type_n = ""
+    if (cat.type === 'expense') type_n = 'Egreso';
+    if (cat.type === 'income') type_n = 'Ingreso';
+    if (cat.type === 'goal') type_n = 'Ahorro';
+    option.textContent = cat.name + " - " + type_n;
     option.dataset.type = cat.type;
     txCategorySelect.appendChild(option);
   });
@@ -115,19 +159,33 @@ function renderCategorySelect() {
   saveTxBtn.disabled = false;
 }
 
+
 function renderRecords() {
   recordsList.innerHTML = '';
 
   const list = filteredTransactions || transactions;
 
-  // Orden inverso (última transacción arriba)
   list.slice().reverse().forEach(tx => {
     const category = categories.find(c => c.id === tx.categoryId);
     const date = new Date(tx.createdAt);
     const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
     const li = document.createElement('li');
-    li.className = `record ${tx.type}`;
+
+    let recordClasses = 'record';
+    if (category && category.type === 'goal') {
+      recordClasses += ' goal';
+
+      if (tx.type === 'income') {
+        recordClasses += ' goal-in';
+      } else {
+        recordClasses += ' goal-out';
+      }
+    } else {
+      recordClasses += ` ${tx.type}`;
+    }
+    li.className = recordClasses;
+
 
     li.innerHTML = `
       <div class="record-info">
@@ -154,35 +212,55 @@ function renderReport() {
   const list = filteredReportTransactions || transactions;
 
   // Orden ascendente
-  const sorted = list.slice().sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+  const sorted = list.slice().sort(
+    (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+  );
 
-  const totalsByCategory = {}; // 🔹 key = cat.id
+  const totalsByCategory = {};
   let totalIncome = 0;
   let totalExpense = 0;
 
-  // 1️⃣ Filas individuales y totales
+  // 🔹 separar normales vs ahorros
+  const normalTx = [];
+  const goalTx = [];
+
   sorted.forEach(tx => {
     const cat = categories.find(c => c.id === tx.categoryId);
-    const date = new Date(tx.createdAt);
-    const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    if (cat?.type === 'goal') {
+      goalTx.push({ tx, cat });
+    } else {
+      normalTx.push({ tx, cat });
+    }
+  });
 
-    const amountSign = tx.type === 'income' ? '+' : '-';
+  // ================== TRANSACCIONES NORMALES ==================
+  normalTx.forEach(({ tx, cat }) => {
+    const date = new Date(tx.createdAt);
+    const formattedDate =
+      date.toLocaleDateString() + ' ' +
+      date.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+
+    const sign = tx.type === 'income' ? '+' : '-';
     const color = tx.type === 'income' ? 'green' : 'red';
 
-    // Fila individual
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${formattedDate}</td>
       <td>${cat ? cat.name : 'Sin categoría'}</td>
       <td>${tx.description || ''}</td>
-      <td style="color:${color}">${amountSign}$${tx.amount.toLocaleString('es-CO')}</td>
+      <td style="color:${color}">
+        ${sign}$${tx.amount.toLocaleString('es-CO')}
+      </td>
     `;
     reportTableBody.appendChild(tr);
 
-    // Totales por categoría usando id
     if (cat) {
       if (!totalsByCategory[cat.id]) {
-        totalsByCategory[cat.id] = { name: cat.name, type: cat.type, amount: 0 };
+        totalsByCategory[cat.id] = {
+          name: cat.name,
+          type: cat.type,
+          amount: 0
+        };
       }
       totalsByCategory[cat.id].amount += tx.amount;
     }
@@ -191,8 +269,7 @@ function renderReport() {
     else totalExpense += tx.amount;
   });
 
-  // 2️⃣ Filas de totales por categoría
-  const totalsEgresos = {};
+  // ================== TOTALES POR CATEGORÍA (NO AHORROS) ==================
   Object.values(totalsByCategory).forEach(cat => {
     const color = cat.type === 'income' ? 'green' : 'red';
     const sign = cat.type === 'income' ? '+' : '-';
@@ -200,35 +277,113 @@ function renderReport() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td colspan="3">Total ${cat.name}</td>
-      <td style="color:${color}">${sign}$${cat.amount.toLocaleString('es-CO')}</td>
+      <td style="color:${color}">
+        ${sign}$${cat.amount.toLocaleString('es-CO')}
+      </td>
     `;
     reportTableFoot.appendChild(tr);
-
-    if (cat.type === 'expense') totalsEgresos[cat.name] = cat.amount;
   });
 
-  // 3️⃣ Totales generales
-  const trTotal = document.createElement('tr');
-  trTotal.innerHTML = `<td colspan="3">TOTAL INGRESOS</td><td style="color:green">+$${totalIncome.toLocaleString('es-CO')}</td>`;
-  reportTableFoot.appendChild(trTotal);
+  // ================== TOTALES GENERALES ==================
+  const trTotalExpense = document.createElement('tr');
+  trTotalExpense.classList.add('total-row', 'total-expense');
+  trTotalExpense.innerHTML = `
+    <td colspan="3">TOTAL INGRESOS</td>
+    <td style="color:green">+$${totalIncome.toLocaleString('es-CO')}</td>
+  `;
+  reportTableFoot.appendChild(trTotalExpense);
 
-  const trTotalExp = document.createElement('tr');
-  trTotalExp.innerHTML = `<td colspan="3">TOTAL EGRESOS</td><td style="color:red">-$${totalExpense.toLocaleString('es-CO')}</td>`;
-  reportTableFoot.appendChild(trTotalExp);
+  const trTotalIncome = document.createElement('tr');
+  trTotalIncome.classList.add('total-row', 'total-income');
+  trTotalIncome.innerHTML = `
+    <td colspan="3">TOTAL EGRESOS</td>
+    <td style="color:red">-$${totalExpense.toLocaleString('es-CO')}</td>
+  `;
+  reportTableFoot.appendChild(trTotalIncome);
 
   const trBalance = document.createElement('tr');
+  trBalance.classList.add('total-row', 'total-balance');
   const balance = totalIncome - totalExpense;
-  const balanceColor = balance >=0 ? 'green' : 'red';
-  trBalance.innerHTML = `<td colspan="3">BALANCE</td><td style="color:${balanceColor}">$${balance.toLocaleString('es-CO')}</td>`;
+  const balanceColor = balance >= 0 ? 'green' : 'red';
+  trBalance.innerHTML = `
+    <td colspan="3">BALANCE</td>
+    <td style="color:${balanceColor}">
+      $${balance.toLocaleString('es-CO')}
+    </td>
+  `;
   reportTableFoot.appendChild(trBalance);
 
-  if ((filteredReportTransactions || transactions).length > 0) {
-    exportReportBtn.disabled = false;
-  } else {
-    exportReportBtn.disabled = true;
+  // ================== SECCIÓN AHORROS ==================
+  if (goalTx.length > 0) {
+
+    const trSpacer = document.createElement('tr');
+    trSpacer.innerHTML = `
+      <td colspan="4" style="background-color: white; height: 20px;"></td>
+    `;
+    reportTableFoot.appendChild(trSpacer);
+
+    const trTitle = document.createElement('tr');
+    trTitle.innerHTML = `
+      <td colspan="4" style="
+        text-align:center;
+        background:#eef4ff;
+        color:#2563eb;
+        font-weight:bold;
+      ">
+        Ahorros
+      </td>
+    `;
+    reportTableFoot.appendChild(trTitle);
+
+    const savingsTotals = {};
+
+    goalTx.forEach(({ tx, cat }) => {
+      const date = new Date(tx.createdAt);
+      const formattedDate =
+        date.toLocaleDateString() + ' ' +
+        date.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+
+      const sign = tx.type === 'income' ? '+' : '-';
+      const color = tx.type === 'income' ? 'green' : 'red';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${formattedDate}</td>
+        <td>${cat.name}</td>
+        <td>${tx.description || ''}</td>
+        <td style="color:${color}">
+          ${sign}$${tx.amount.toLocaleString('es-CO')}
+        </td>
+      `;
+      reportTableFoot.appendChild(tr);
+
+      if (!savingsTotals[cat.id]) {
+        savingsTotals[cat.id] = { name: cat.name, total: 0 };
+      }
+
+      savingsTotals[cat.id].total +=
+        tx.type === 'income' ? tx.amount : -tx.amount;
+    });
+
+    Object.values(savingsTotals).forEach(s => {
+      const color = s.total >= 0 ? 'green' : 'red';
+      const sign = s.total >= 0 ? '+' : '-';
+
+      const tr = document.createElement('tr');
+      tr.classList.add('total-row', 'total-savings');
+      tr.innerHTML = `
+        <td colspan="3">Total ahorro ${s.name}</td>
+        <td style="color:${color}">
+          ${sign}$${Math.abs(s.total).toLocaleString('es-CO')}
+        </td>
+      `;
+      reportTableFoot.appendChild(tr);
+    });
   }
 
+  exportReportBtn.disabled = list.length === 0;
 }
+
 
 exportReportBtn.addEventListener('click', () => {
   const table = document.getElementById('reportTable');
@@ -320,40 +475,86 @@ function deleteTransaction(id) {
   renderRecords();
 }
 
+function renderEditCategorySelect(selectedCategoryId) {
+  editTxCategorySelect.innerHTML = '';
+
+  const orderedCategories = [
+    ...categories.filter(c => c.type === 'expense'),
+    ...categories.filter(c => c.type === 'income'),
+    ...categories.filter(c => c.type === 'goal')
+  ];
+
+  orderedCategories.forEach(cat => {
+    const option = document.createElement('option');
+    option.value = cat.id;
+    option.textContent = cat.name;
+    option.dataset.type = cat.type;
+
+    if (cat.id === selectedCategoryId) {
+      option.selected = true;
+    }
+
+    editTxCategorySelect.appendChild(option);
+  });
+
+  // 🔁 aplicar lógica de flujo según categoría
+  handleEditCategoryChange();
+}
+
+
+function handleEditCategoryChange() {
+  const selectedOption = editTxCategorySelect.selectedOptions[0];
+  if (!selectedOption) return;
+
+  const type = selectedOption.dataset.type;
+
+  if (type === 'goal') {
+    editTxFlowSelect.disabled = false;
+  } else {
+    editTxFlowSelect.disabled = true;
+    editTxFlowSelect.value = '';
+  }
+}
+
+editTxCategorySelect.addEventListener('change', handleEditCategoryChange);
+
 function editTransaction(id) {
   const tx = transactions.find(t => t.id === id);
   if (!tx) return;
 
   editingTransactionId = id;
 
-  // Mostrar fecha/hora original solo para info
-  const date = new Date(tx.createdAt);
-  const formatted = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  editTxDateInput.value = formatted;
+  // 🔹 obtener categoría real
+  const category = categories.find(c => c.id === tx.categoryId);
+  if (!category) return;
 
-  // Rellenar el resto de campos
-  editTxAmountInput.value = tx.amount;
-  editTxDescriptionInput.value = tx.description || '';
-  editTxCategorySelect.innerHTML = '';
-  categories.forEach(cat => {
-    const option = document.createElement('option');
-    option.value = cat.id;
-    option.textContent = cat.name;
-    option.selected = cat.id === tx.categoryId;
-    editTxCategorySelect.appendChild(option);
-  });
-
-  // Mostrar la vista de edición
+  // cargar vista
   views.forEach(view => view.classList.remove('active'));
   document.querySelector('[data-view="edit"]').classList.add('active');
   navButtons.forEach(b => b.disabled = true);
+
+  // cargar datos
+  editTxDate.value = new Date(tx.createdAt).toLocaleString();
+  editTxDescription.value = tx.description || '';
+  editTxAmount.value = tx.amount;
+
+  // cargar categorías
+  renderEditCategorySelect(tx.categoryId);
+
+  // 🔹 flujo SOLO para ahorro
+  if (category.type === 'goal') {
+    editTxFlowSelect.disabled = false;
+    editTxFlowSelect.value = tx.type; // income | expense
+  } else {
+    editTxFlowSelect.disabled = true;
+    editTxFlowSelect.value = '';
+  }
 }
 
 
 editingTransactionId = null;  
 saveTxBtn.textContent = 'Guardar';
 document.querySelector('section[data-view="add"] h1').textContent = 'Nuevo movimiento';  
-
 
 
 function deleteCategory(id) {
@@ -380,9 +581,14 @@ function editCategory(id) {
 
   categoryNameInput.value = cat.name;
   categoryTypeSelect.value = cat.type;
-  categoryMaxAmountInput.value = cat.maxAmount != null ? cat.maxAmount : '';
+  categoryMaxAmountInput.value = cat.amount || '';
+  categoryDueDateInput.value = cat.dueDate || '';
+
+  categoryTypeSelect.dispatchEvent(new Event('change'));
+
   modal.classList.remove('hidden');
 }
+
 
 function applyFilter() {
   const month = filterMonthInput.value;
@@ -509,6 +715,30 @@ importBackupInput.addEventListener('change', (event) => {
 });
 
 
+categoryTypeSelect.addEventListener('change', () => {
+  const type = categoryTypeSelect.value;
+
+  categoryMaxAmountInput.value = '';
+  categoryDueDateInput.value = '';
+
+  if (type === 'income') {
+    categoryAmountWrapper.classList.add('hidden');
+    categoryDueDateWrapper.classList.add('hidden');
+  }
+
+  if (type === 'expense') {
+    categoryAmountWrapper.classList.remove('hidden');
+    categoryDueDateWrapper.classList.add('hidden');
+  }
+
+  if (type === 'goal') {
+    categoryAmountWrapper.classList.remove('hidden');
+    categoryDueDateWrapper.classList.remove('hidden');
+  }
+});
+
+
+
 
 function importBackupData(backup) {
   if (
@@ -566,7 +796,6 @@ function importBackupData(backup) {
 
 
 
-
 // ================== NAVEGACIÓN ==================
 navButtons.forEach(button => {
   button.addEventListener('click', () => {
@@ -599,11 +828,8 @@ navButtons.forEach(button => {
 });
 
 
-
-
 reportApplyFilterBtn.addEventListener('click', applyReportFilter);
 reportClearFilterBtn.addEventListener('click', clearReportFilter);
-
 
 
 // ================== MODALES ==================
@@ -641,30 +867,67 @@ categoryForm.addEventListener('submit', e => {
 
   const name = categoryNameInput.value.trim();
   const type = categoryTypeSelect.value;
-  const maxAmount = categoryMaxAmountInput.value ? Number(categoryMaxAmountInput.value) : null;
 
-  if (!name) return;
+  const amount =
+    type !== 'income' && categoryMaxAmountInput.value
+      ? Number(categoryMaxAmountInput.value)
+      : null;
+
+  const dueDate =
+    type === 'goal' && categoryDueDateInput.value
+      ? categoryDueDateInput.value
+      : null;
+
+  if (!name) {
+    alert('La categoría debe tener un nombre');
+    return;
+  }
+
+  if (type === 'goal' && !categoryMaxAmountInput.value) {
+    alert('El ahorro debe tener un monto objetivo');
+    return;
+  }
+
+  const normalizedName = name.toLowerCase();
+
+  const duplicated = categories.some(cat => {
+    if (editingCategoryId && cat.id === editingCategoryId) return false;
+    return cat.name.toLowerCase() === normalizedName;
+  });
+
+  if (duplicated) {
+    alert('Ya existe una categoría con ese nombre');
+    return;
+  }
 
   if (editingCategoryId) {
-    const cat = categories.find(c => c.id === editingCategoryId);
-    cat.name = name;
-    cat.type = type;
-    cat.maxAmount = maxAmount;
+    const category = categories.find(c => c.id === editingCategoryId);
+    if (!category) return;
+    console.log(amount)
+    category.name = name;
+    category.type = type;
+    category.amount = amount;
+    category.dueDate = dueDate;
+
     editingCategoryId = null;
   } else {
     categories.push({
       id: Date.now(),
       name,
       type,
-      maxAmount
+      amount,
+      dueDate,
+      createdAt: new Date().toISOString()
     });
   }
+  // =======================================================
 
   localStorage.setItem('categories', JSON.stringify(categories));
   categoryForm.reset();
   modal.classList.add('hidden');
   renderCategories();
 });
+
 
 
 
@@ -677,40 +940,46 @@ txForm.addEventListener('submit', e => {
   const selectedOption = txCategorySelect.selectedOptions[0];
   if (!amount || amount <= 0 || !selectedOption) return;
 
-  if (editingTransactionId) {
-    // Actualizar transacción
-    const tx = transactions.find(t => t.id === editingTransactionId);
-    tx.amount = amount;
-    tx.description = description;
-    tx.categoryId = Number(selectedOption.value);
-    tx.type = selectedOption.dataset.type;
+  const categoryType = selectedOption.dataset.type;
+  let txType = categoryType;
 
-    editingTransactionId = null;
-
-    // ✅ Volver automáticamente a la vista de registros
-    views.forEach(view => {
-      view.classList.toggle('active', view.dataset.view === 'records');
-    });
-    navButtons.forEach(b => b.classList.remove('active'));
-    document.querySelector('.nav-btn[data-target="records"]').classList.add('active');
-  } else {
-    // Agregar nuevo
-    transactions.push({
-      id: Date.now(),
-      amount,
-      description,
-      categoryId: Number(selectedOption.value),
-      type: selectedOption.dataset.type,
-      createdAt: new Date().toISOString()
-    });
+  if (categoryType === 'goal') {
+    if (!txFlowSelect.value) {
+      alert('Define si el ahorro es entrada o salida');
+      return;
+    }
+    txType = txFlowSelect.value;
   }
+
+  transactions.push({
+    id: Date.now(),
+    amount,
+    description,
+    categoryId: Number(selectedOption.value),
+    type: txType,
+    createdAt: new Date().toISOString()
+  });
 
   localStorage.setItem('transactions', JSON.stringify(transactions));
   txForm.reset();
-  saveTxBtn.textContent = 'Guardar';
-  document.querySelector('section[data-view="add"] h1').textContent = 'Nuevo movimiento';
 
   renderRecords();
+});
+
+
+txCategorySelect.addEventListener('change', () => {
+  const selected = txCategorySelect.selectedOptions[0];
+  if (!selected) return;
+
+  const type = selected.dataset.type;
+
+  if (type === 'goal') {
+    txFlowSelect.disabled = false;
+    txFlowSelect.value = '';
+  } else {
+    txFlowSelect.disabled = true;
+    txFlowSelect.value = '';
+  }
 });
 
 
@@ -720,23 +989,46 @@ editForm.addEventListener('submit', e => {
   if (!editingTransactionId) return;
 
   const tx = transactions.find(t => t.id === editingTransactionId);
-  tx.amount = Number(editTxAmountInput.value);
-  tx.description = editTxDescriptionInput.value.trim();
-  tx.categoryId = Number(editTxCategorySelect.value);
-  tx.type = categories.find(c => c.id === tx.categoryId).type;
+  if (!tx) return;
 
-  // 🔹 NO modificamos tx.createdAt
+  const amount = Number(editTxAmountInput.value);
+  if (!amount || amount <= 0) return;
+
+  const description = editTxDescriptionInput.value.trim();
+  const categoryId = Number(editTxCategorySelect.value);
+
+  // 🔹 obtener la categoría real
+  const category = categories.find(c => c.id === categoryId);
+  if (!category) return;
+
+  // 🔒 validación: ahorro debe definir flujo
+  if (category.type === 'goal' && !editTxFlowSelect.value) {
+    alert('Debes definir si el ahorro es entrada o salida');
+    return;
+  }
+
+  // 🔹 actualizar datos
+  tx.amount = amount;
+  tx.description = description;
+  tx.categoryId = categoryId;
+
+  // 🔹 tipo final de la transacción
+  tx.type =
+    category.type === 'goal'
+      ? editTxFlowSelect.value   
+      : category.type;           
+
 
   localStorage.setItem('transactions', JSON.stringify(transactions));
 
-  // Regresar a vista de registros
   views.forEach(view => view.classList.remove('active'));
   document.querySelector('[data-view="records"]').classList.add('active');
   navButtons.forEach(b => b.disabled = false);
-  renderRecords();
 
+  renderRecords();
   editingTransactionId = null;
 });
+
 
 
 cancelEditBtn.addEventListener('click', () => {
@@ -791,6 +1083,36 @@ function clearReportFilter() {
   reportTitle.textContent = 'Reporte presupuestal - Todo';
   renderReport();
 }
+
+
+
+// ========================= BORRAR TODO ====================
+
+
+clearAllDataBtn.addEventListener('click', () => {
+  const confirmation = confirm(
+    '⚠️ ESTA ACCIÓN ES IRREVERSIBLE.\n\n¿Seguro que quieres continuar?'
+  );
+
+  if (!confirmation) return;
+
+  const password = prompt(
+    'Para confirmar, escribe la contraseña de seguridad:'
+  );
+
+  if (password !== '123456') {
+    alert('❌ Contraseña incorrecta. No se borró nada.');
+    return;
+  }
+
+  // 🔥 BORRADO TOTAL SOLO SI PASA TODO
+  localStorage.clear();
+
+  alert('✅ Todos los datos fueron eliminados correctamente.');
+
+  location.reload(); // recarga la app limpia
+});
+
 
 
 // ================== INICIALIZACIÓN ==================

@@ -152,6 +152,10 @@ h1 {
   border-left: 4px solid #f44336;
 }
 
+.list-item.goal {
+  border-left: 4px solid #2196f3;
+}
+
 /* Acciones */
 .actions {
   font-size: 1.1rem;
@@ -230,6 +234,23 @@ h1 {
   font-weight: bold;
 }
 
+.record.goal {
+  border-left: 4px solid #2196f3; 
+}
+
+.record.goal-in {
+  border-right: 4px solid #4caf50; 
+}
+
+.record.goal-out {
+  border-right: 4px solid #f44336;
+}
+
+.record {
+  border-right: 4px solid transparent;
+}
+
+
 /* Contenedor de filtros */
 .filters {
   display: flex;
@@ -264,8 +285,6 @@ h1 {
   gap: 0.4rem;
   margin-left: auto; 
 }
-
-
 
 
 /* reporte */
@@ -415,3 +434,61 @@ h1 {
 
 
 
+.total-income td {
+  background-color: #fdecec;
+}
+
+.total-expense td {
+  background-color: #edf7ed;
+}
+
+.total-balance td {
+  background-color: #f3e8ff;
+}
+
+.total-savings td {
+  background-color: #d2e6ff;
+}
+
+.total-row td {
+  font-weight: bold;
+}
+
+
+.total-row td {
+  padding: 10px;
+  border-top: 1px solid #d0d7e2;
+}
+
+
+/* ZONA DE PELIGRO */
+.danger-zone {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 2px dashed #dc2626;
+  border-radius: 12px;
+  background: #fef2f2;
+  text-align: center;
+}
+
+/* BOTÓN PELIGRO */
+.danger-btn {
+  background: linear-gradient(135deg, #dc2626, #991b1b);
+  color: white;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+}
+
+.danger-btn:hover {
+  background: linear-gradient(135deg, #b91c1c, #7f1d1d);
+}
+
+.danger-btn:active {
+  transform: scale(0.97);
+}
