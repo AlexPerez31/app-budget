@@ -309,39 +309,81 @@ h1 {
 #reportTable th,
 #reportTable td {
   padding: 8px 12px;
-  text-align: left;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
 }
 
-#reportTable th {
+.section-header th {
   background: #f3f7fb;
+  font-weight: bold;
 }
 
-#reportTable tr:nth-child(even) {
+.spacer {
+  height: 14px;
+  background: white;
+}
+
+/* ===== TITLES ===== */
+.title-income td {
+  background: #16a34a;
+  color: white;
+  text-align: center;
+  font-weight: bold;
+}
+
+.title-expense td {
+  background: #dc2626;
+  color: white;
+  text-align: center;
+  font-weight: bold;
+}
+
+.title-savings td {
+  background: #2563eb;
+  color: white;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* ===== TOTALS ===== */
+.total-row td {
+  font-weight: bold;
+}
+
+.income-soft td {
+  background: #ecfdf5;
+}
+
+.income-strong td {
+  background: #bbf7d0;
+}
+
+.expense-soft td {
+  background: #fef2f2;
+}
+
+.expense-strong td {
+  background: #fecaca;
+}
+
+.balance-row td {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.savings-soft td {
+  background: #c6daff;
+}
+
+.data-row:nth-child(even) {
   background: #f8fafd;
 }
 
-#reportTable tfoot td {
-  font-weight: bold;
-  border-top: 2px solid #4a90e2;
+.data-row:nth-child(odd) {
+  background: #ffffff;
 }
 
-.report-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin: 0.5rem 0;
-}
 
-.report-chart {
-  margin-top: 1rem;
-}
-
-.report-chart canvas {
-  width: 100% !important;
-  max-height: 200px;
-  margin-top: 0.5rem;
-}
-
+/*Mi estado */
 
 .secondary-btn:disabled {
   background-color: #ccc;      

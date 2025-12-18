@@ -207,205 +207,266 @@ function renderRecords() {
 
 function renderReport() {
   reportTableBody.innerHTML = '';
-  reportTableFoot.innerHTML = '';
 
   const list = filteredReportTransactions || transactions;
+  exportReportBtn.disabled = true;
 
-  // Orden ascendente
+  if (list.length === 0) return;
+
   const sorted = list.slice().sort(
     (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
   );
 
-  const totalsByCategory = {};
-  let totalIncome = 0;
-  let totalExpense = 0;
-
-  // 🔹 separar normales vs ahorros
-  const normalTx = [];
+  const incomeTx = [];
+  const expenseTx = [];
   const goalTx = [];
 
   sorted.forEach(tx => {
     const cat = categories.find(c => c.id === tx.categoryId);
-    if (cat?.type === 'goal') {
-      goalTx.push({ tx, cat });
-    } else {
-      normalTx.push({ tx, cat });
-    }
+    if (cat?.type === 'goal') goalTx.push({ tx, cat });
+    else if (tx.type === 'income') incomeTx.push({ tx, cat });
+    else expenseTx.push({ tx, cat });
   });
 
-  // ================== TRANSACCIONES NORMALES ==================
-  normalTx.forEach(({ tx, cat }) => {
-    const date = new Date(tx.createdAt);
-    const formattedDate =
-      date.toLocaleDateString() + ' ' +
-      date.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  const formatDate = d =>
+    new Date(d).toLocaleDateString() + ' ' +
+    new Date(d).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
 
-    const sign = tx.type === 'income' ? '+' : '-';
-    const color = tx.type === 'income' ? 'green' : 'red';
-
+  const addTitle = (text, cls) => {
     const tr = document.createElement('tr');
+    tr.className = cls;
+    tr.innerHTML = `<td colspan="4">${text}</td>`;
+    reportTableBody.appendChild(tr);
+  };
+
+  const addHeader = () => {
+    const tr = document.createElement('tr');
+    tr.className = 'section-header';
     tr.innerHTML = `
-      <td>${formattedDate}</td>
-      <td>${cat ? cat.name : 'Sin categoría'}</td>
-      <td>${tx.description || ''}</td>
-      <td style="color:${color}">
-        ${sign}$${tx.amount.toLocaleString('es-CO')}
-      </td>
+      <th>Fecha</th>
+      <th>Categoría</th>
+      <th>Descripción</th>
+      <th>Monto</th>
     `;
     reportTableBody.appendChild(tr);
+  };
 
-    if (cat) {
-      if (!totalsByCategory[cat.id]) {
-        totalsByCategory[cat.id] = {
-          name: cat.name,
-          type: cat.type,
-          amount: 0
-        };
-      }
-      totalsByCategory[cat.id].amount += tx.amount;
-    }
-
-    if (tx.type === 'income') totalIncome += tx.amount;
-    else totalExpense += tx.amount;
-  });
-
-  // ================== TOTALES POR CATEGORÍA (NO AHORROS) ==================
-  Object.values(totalsByCategory).forEach(cat => {
-    const color = cat.type === 'income' ? 'green' : 'red';
-    const sign = cat.type === 'income' ? '+' : '-';
-
+  const addSpacer = () => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td colspan="3">Total ${cat.name}</td>
-      <td style="color:${color}">
-        ${sign}$${cat.amount.toLocaleString('es-CO')}
+    tr.innerHTML = `<td colspan="4" class="spacer"></td>`;
+    reportTableBody.appendChild(tr);
+  };
+
+  let totalIncome = 0;
+  let totalExpense = 0;
+
+  // ================== INGRESOS ==================
+  if (incomeTx.length) {
+    addTitle('INGRESOS', 'title-income');
+    addHeader();
+
+    const totals = {};
+
+    incomeTx.forEach(({ tx, cat }) => {
+      const tr = document.createElement('tr');
+      tr.className = 'data-row';
+      tr.innerHTML = `
+        <td>${formatDate(tx.createdAt)}</td>
+        <td>${cat?.name || 'Sin categoría'}</td>
+        <td>${tx.description || ''}</td>
+        <td data-amount="${tx.amount}">
+          $${tx.amount.toLocaleString('es-CO')}
+        </td>
+      `;
+      reportTableBody.appendChild(tr);
+
+      if (cat) {
+        totals[cat.id] ??= { name: cat.name, amount: 0 };
+        totals[cat.id].amount += tx.amount;
+      }
+      totalIncome += tx.amount;
+    });
+
+    Object.values(totals).forEach(c => {
+      const tr = document.createElement('tr');
+      tr.className = 'total-row income-soft';
+      tr.innerHTML = `
+        <td colspan="3">Total ${c.name}</td>
+        <td data-amount="${c.amount}">
+          $${c.amount.toLocaleString('es-CO')}
+        </td>
+      `;
+      reportTableBody.appendChild(tr);
+    });
+
+    const trTotal = document.createElement('tr');
+    trTotal.className = 'total-row income-strong';
+    trTotal.innerHTML = `
+      <td colspan="3">TOTAL INGRESOS</td>
+      <td data-amount="${totalIncome}">
+        $${totalIncome.toLocaleString('es-CO')}
       </td>
     `;
-    reportTableFoot.appendChild(tr);
-  });
+    reportTableBody.appendChild(trTotal);
 
-  // ================== TOTALES GENERALES ==================
-  const trTotalExpense = document.createElement('tr');
-  trTotalExpense.classList.add('total-row', 'total-expense');
-  trTotalExpense.innerHTML = `
-    <td colspan="3">TOTAL INGRESOS</td>
-    <td style="color:green">+$${totalIncome.toLocaleString('es-CO')}</td>
-  `;
-  reportTableFoot.appendChild(trTotalExpense);
+    addSpacer();
+  }
 
-  const trTotalIncome = document.createElement('tr');
-  trTotalIncome.classList.add('total-row', 'total-income');
-  trTotalIncome.innerHTML = `
-    <td colspan="3">TOTAL EGRESOS</td>
-    <td style="color:red">-$${totalExpense.toLocaleString('es-CO')}</td>
-  `;
-  reportTableFoot.appendChild(trTotalIncome);
+  // ================== EGRESOS ==================
+  if (expenseTx.length) {
+    addTitle('EGRESOS', 'title-expense');
+    addHeader();
 
-  const trBalance = document.createElement('tr');
-  trBalance.classList.add('total-row', 'total-balance');
+    const totals = {};
+
+    expenseTx.forEach(({ tx, cat }) => {
+      const tr = document.createElement('tr');
+      tr.className = 'data-row';
+      tr.innerHTML = `
+        <td>${formatDate(tx.createdAt)}</td>
+        <td>${cat?.name || 'Sin categoría'}</td>
+        <td>${tx.description || ''}</td>
+        <td data-amount="${tx.amount}">
+          $${tx.amount.toLocaleString('es-CO')}
+        </td>
+      `;
+      reportTableBody.appendChild(tr);
+
+      if (cat) {
+        totals[cat.id] ??= { name: cat.name, amount: 0 };
+        totals[cat.id].amount += tx.amount;
+      }
+      totalExpense += tx.amount;
+    });
+
+    Object.values(totals).forEach(c => {
+      const tr = document.createElement('tr');
+      tr.className = 'total-row expense-soft';
+      tr.innerHTML = `
+        <td colspan="3">Total ${c.name}</td>
+        <td data-amount="${c.amount}">
+          $${c.amount.toLocaleString('es-CO')}
+        </td>
+      `;
+      reportTableBody.appendChild(tr);
+    });
+
+    const trTotal = document.createElement('tr');
+    trTotal.className = 'total-row expense-strong';
+    trTotal.innerHTML = `
+      <td colspan="3">TOTAL EGRESOS</td>
+      <td data-amount="${totalExpense}">
+        $${totalExpense.toLocaleString('es-CO')}
+      </td>
+    `;
+    reportTableBody.appendChild(trTotal);
+
+    addSpacer();
+  }
+
+  // ================== BALANCE (SIEMPRE) ==================
   const balance = totalIncome - totalExpense;
-  const balanceColor = balance >= 0 ? 'green' : 'red';
+  const trBalance = document.createElement('tr');
+  trBalance.className = 'total-row balance-row';
   trBalance.innerHTML = `
     <td colspan="3">BALANCE</td>
-    <td style="color:${balanceColor}">
-      $${balance.toLocaleString('es-CO')}
+    <td data-amount="${balance}">
+      ${balance >= 0 ? '+' : '-'}$${Math.abs(balance).toLocaleString('es-CO')}
     </td>
   `;
-  reportTableFoot.appendChild(trBalance);
+  reportTableBody.appendChild(trBalance);
 
-  // ================== SECCIÓN AHORROS ==================
-  if (goalTx.length > 0) {
+  addSpacer();
 
-    const trSpacer = document.createElement('tr');
-    trSpacer.innerHTML = `
-      <td colspan="4" style="background-color: white; height: 20px;"></td>
-    `;
-    reportTableFoot.appendChild(trSpacer);
+  // ================== AHORROS ==================
+  if (goalTx.length) {
+    addTitle('AHORROS', 'title-savings');
+    addHeader();
 
-    const trTitle = document.createElement('tr');
-    trTitle.innerHTML = `
-      <td colspan="4" style="
-        text-align:center;
-        background:#eef4ff;
-        color:#2563eb;
-        font-weight:bold;
-      ">
-        Ahorros
-      </td>
-    `;
-    reportTableFoot.appendChild(trTitle);
-
-    const savingsTotals = {};
+    const totals = {};
 
     goalTx.forEach(({ tx, cat }) => {
-      const date = new Date(tx.createdAt);
-      const formattedDate =
-        date.toLocaleDateString() + ' ' +
-        date.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-
       const sign = tx.type === 'income' ? '+' : '-';
       const color = tx.type === 'income' ? 'green' : 'red';
 
       const tr = document.createElement('tr');
+      tr.className = 'data-row';
       tr.innerHTML = `
-        <td>${formattedDate}</td>
+        <td>${formatDate(tx.createdAt)}</td>
         <td>${cat.name}</td>
         <td>${tx.description || ''}</td>
-        <td style="color:${color}">
+        <td data-amount="${tx.type === 'income' ? tx.amount : -tx.amount}"
+          style="color:${color}"
+        >
           ${sign}$${tx.amount.toLocaleString('es-CO')}
         </td>
       `;
-      reportTableFoot.appendChild(tr);
+      reportTableBody.appendChild(tr);
 
-      if (!savingsTotals[cat.id]) {
-        savingsTotals[cat.id] = { name: cat.name, total: 0 };
-      }
-
-      savingsTotals[cat.id].total +=
-        tx.type === 'income' ? tx.amount : -tx.amount;
+      totals[cat.id] ??= { name: cat.name, total: 0 };
+      totals[cat.id].total += tx.type === 'income' ? tx.amount : -tx.amount;
     });
 
-    Object.values(savingsTotals).forEach(s => {
-      const color = s.total >= 0 ? 'green' : 'red';
-      const sign = s.total >= 0 ? '+' : '-';
+    Object.values(totals).forEach(t => {
+      const color = t.total >= 0 ? 'green' : 'red';
+      const sign = t.total >= 0 ? '+' : '-';
 
       const tr = document.createElement('tr');
-      tr.classList.add('total-row', 'total-savings');
+      tr.className = 'total-row savings-soft';
       tr.innerHTML = `
-        <td colspan="3">Total ahorro ${s.name}</td>
-        <td style="color:${color}">
-          ${sign}$${Math.abs(s.total).toLocaleString('es-CO')}
+        <td colspan="3">Total ahorro ${t.name}</td>
+        <td data-amount="${t.total}"
+          style="color:${color}"
+        >
+          ${sign}$${Math.abs(t.total).toLocaleString('es-CO')}
         </td>
       `;
-      reportTableFoot.appendChild(tr);
+      reportTableBody.appendChild(tr);
     });
   }
 
-  exportReportBtn.disabled = list.length === 0;
+  exportReportBtn.disabled = false;
 }
+
 
 
 exportReportBtn.addEventListener('click', () => {
   const table = document.getElementById('reportTable');
-  
+
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.table_to_sheet(table, {
-    raw: true
+  const ws = XLSX.utils.table_to_sheet(table, { raw: true });
+
+  // 🔹 Recorremos filas HTML para mapear data-amount
+  const rows = table.querySelectorAll('tbody tr');
+
+  rows.forEach((tr, rowIndex) => {
+    const amountCell = tr.querySelector('td[data-amount]');
+    if (!amountCell) return;
+
+    const amount = Number(amountCell.dataset.amount);
+    if (isNaN(amount)) return;
+
+    // Columna D (Monto) → índice 3
+    const cellAddress = XLSX.utils.encode_cell({
+      r: rowIndex,
+      c: 3
+    });
+
+    ws[cellAddress] = {
+      t: 'n',        // number
+      v: amount,     // valor real
+      z: '$#,##0.00' // formato moneda Excel
+    };
   });
 
-  Object.keys(ws).forEach(cell => {
-  if (cell.startsWith('D') && cell !== 'D1') {
-    ws[cell].t = 's'; // fuerza string
-  }
-});
+  XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
 
+  const filename =
+    reportTitle.textContent.replace(/\s+/g, '_') + '.xlsx';
 
-  XLSX.utils.book_append_sheet(wb, ws, "Reporte");
-
-  // Usamos el título como nombre del archivo
-  const filename = reportTitle.textContent.replace(/\s+/g, '_') + ".xlsx";
   XLSX.writeFile(wb, filename);
 });
+
 
 
 
