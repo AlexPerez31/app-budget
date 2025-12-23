@@ -23,11 +23,14 @@
 
   <!-- Navbar -->
     <header class="navbar">
-        <button class="nav-btn active" data-target="add">➕</button>
-        <button class="nav-btn" data-target="categories">📁</button>
-        <button class="nav-btn" data-target="records">📃</button>
-        <button class="nav-btn" data-target="report">📊</button>
-        <button class="nav-btn" data-target="profile">👤</button>
+      <button class="nav-btn active" data-target="add">➕</button>
+      <button class="nav-btn" data-target="categories">📁</button>
+      <button class="nav-btn" data-target="records">📃</button>
+      <button class="nav-btn" data-target="report">📊</button>
+      <button class="nav-btn" data-target="profile">
+        👤
+        <span id="profileAlertDot" class="alert-dot hidden"></span>
+      </button>
     </header>
 
 
@@ -218,12 +221,28 @@
 
       <!-- Mensaje -->
       <p class="status-message" id="statusMessage">
-          Aquí irá el mensaje según tu estado este mes
+          Estado este mes
       </p>
 
       <!-- Lista de categorías excedidas -->
       <ul class="status-list" id="statusList"></ul>
 
+      </div>
+      <br>
+
+      <!-- Sección Deudas -->
+      <div class="card">
+        <h3>Deudas:</h3>
+        <p style="font-size: 0.85rem; color:#6b7280;">
+          Revisa lo que te deben y lo que debes pagar
+        </p>
+
+        <button
+          class="secondary-btn"
+          id="goToDebtsBtn"
+        >
+          Ver deudas
+        </button>
       </div>
       <br>
       <section class="savings-status">
@@ -257,9 +276,104 @@
           ⚠️ BORRAR TODOS LOS DATOS
         </button>
       </div>
+            <br><br>
+      <div class="profile-footer">
+        <button id="goToAboutBtn" class="link-btn">
+          ℹ️ Acerca de esta aplicación
+        </button>
+      </div>
 
               <br><br><br>
         <div></div>
+    </section>
+
+
+    <!-- Vista: Deudas -->
+    <section class="view" data-view="debt">
+
+      <h1>Deudas</h1>
+
+      <div class="card">
+        <button class="secondary-btn" id="exportDebtsBtn">
+          Exportar a Excel
+        </button>
+      </div>
+
+      <div class="report-table-container">
+        <table id="debtTable">
+          <tbody id="debtTableBody">
+            <!-- Render dinámico -->
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+    <!-- Vista: Acerca de -->
+    <section class="view" data-view="about">
+
+      <h1>Acerca de esta aplicación</h1>
+
+      <div class="about-card">
+
+        <!-- ===== PERFIL ===== -->
+        <div class="about-profile">
+          <img
+            src="img/profile.jpg"
+            alt="Alex Pérez"
+            class="about-avatar"
+          />
+
+          <div class="about-info">
+            <h2>Alex Pérez</h2>
+            <p class="about-role">Ingeniero Telemático</p>
+
+            <a
+              href="https://www.linkedin.com/in/alexjordanperez"
+              target="_blank"
+              class="about-link"
+            >
+              LinkedIn
+            </a>
+
+            <a
+              href="mailto:alexjordanperez31@gmail.com"
+              class="about-link"
+            >
+              alexjordanperez31@gmail.com
+            </a>
+          </div>
+        </div>
+
+        <!-- ===== APP INFO ===== -->
+        <div class="about-app">
+          <h3>Presupuesto – v1.7</h3>
+
+          <p class="about-description">
+            Aplicación personal de control financiero para el registro de
+            ingresos, egresos, ahorros y deudas.
+            <br /><br />
+            Funciona completamente en el navegador utilizando
+            <strong>LocalStorage</strong>, por lo que se recomienda
+            no borrar los datos de navegación para evitar pérdida de información.
+          </p>
+
+          <ul class="about-tech">
+            <li>HTML</li>
+            <li>CSS</li>
+            <li>JavaScript</li>
+            <li>LocalStorage</li>
+            <li>Exportación a Excel (XLSX)</li>
+            <li>Backups en JSON</li>
+          </ul>
+        </div>
+
+        <!-- ===== COPYRIGHT ===== -->
+        <div class="about-footer">
+          © 2025 Alex Pérez · Proyecto personal
+        </div>
+
+      </div>
     </section>
 
 
@@ -283,6 +397,8 @@
               <option value="expense">Egreso</option>
               <option value="income">Ingreso</option>
               <option value="goal">Ahorro</option>
+              <option value="debt-in">Por cobrar</option>
+              <option value="debt-out">Por pagar</option>
             </select>
         </label>
 

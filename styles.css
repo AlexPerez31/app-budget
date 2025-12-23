@@ -29,11 +29,12 @@ body {
   background: none;
   border: none;
   font-size: 1.4rem;
-  opacity: 0.5;
+  color: rgba(0, 0, 0, 0.4); 
 }
 
+
 .nav-btn.active {
-  opacity: 1;
+  color: rgba(0, 0, 0, 1);
 }
 
 /* App */
@@ -159,6 +160,17 @@ h1 {
   background: #d2e5f4;
 }
 
+.list-item.debt-in {
+  border-left: 4px solid #ffdc5c;
+  background: #fff7c7;
+}
+
+.list-item.debt-out {
+  border-left: 4px solid #ba5fff;
+  background: #dbcbfc;
+}
+
+
 /* Acciones */
 .actions {
   font-size: 1.1rem;
@@ -199,6 +211,7 @@ h1 {
   color: #6b7280;
 }
 
+/* records */
 
 .records {
   list-style: none;
@@ -247,6 +260,14 @@ h1 {
 
 .record.goal-out {
   border-right: 4px solid #f44336;
+}
+
+.record.debt-in {
+  border-left: 4px solid #ffdc5c;
+}
+
+.record.debt-out {
+  border-left: 4px solid #ba5fff;
 }
 
 .record {
@@ -590,3 +611,208 @@ h1 {
   font-size: 0.75rem;
   margin-top: 6px;
 }
+
+
+
+.profile-btn {
+  position: relative;
+}
+
+.alert-dot {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  background-color: #ff2d2d;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(255, 45, 45, 0.9);
+}
+
+.hidden {
+  display: none;
+}
+
+
+.nav-btn {
+  position: relative;
+}
+
+/* Punto rojo */
+.alert-dot {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+
+  background: radial-gradient(circle at top left, #ff6b6b, #dc2626);
+  border: 2px solid #fff;
+
+  box-shadow:
+    0 0 6px rgba(239, 68, 68, 0.9),
+    0 0 12px rgba(239, 68, 68, 0.5);
+
+  pointer-events: none;
+}
+
+/* Oculto */
+.alert-dot.hidden {
+  display: none;
+}
+
+
+.alert-dot {
+  opacity: 1 !important;
+}
+
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.alert-dot {
+  animation: pulse 1.5s infinite;
+}
+
+
+/* debts */
+
+.title-debt-in td {
+  background: #ffdc5c;
+  font-weight: bold;
+  font-size: 14px; 
+}
+
+.title-debt-out td {
+  background: #ba5fff;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.debt-category.debt-in td {
+  background: #fff7c7;
+  font-size: 14px;
+}
+
+.debt-category.debt-out td {
+  background: #dbcbfc;
+  font-size: 14px;
+}
+
+.total-row.debt-total td {
+  font-weight: bold;
+  background: #f3f4f6;
+  font-size: 14px; 
+}
+
+.spacer {
+  height: 12px;
+}
+
+.data-row td {
+  padding: 6px 8px;
+  font-size: 14px;/
+}
+
+.data-row td:nth-child(2) {
+  width: 100px; 
+}
+
+
+/* ===== ABOUT VIEW ===== */
+
+.about-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  max-width: 720px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Perfil */
+.about-profile {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.about-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #e5e7eb;
+}
+
+.about-info h2 {
+  margin: 0;
+}
+
+.about-role {
+  color: #6b7280;
+  margin: 4px 0 8px;
+}
+
+.about-link {
+  display: block;
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.about-link:hover {
+  text-decoration: underline;
+}
+
+/* App info */
+.about-app h3 {
+  margin-bottom: 8px;
+}
+
+.about-description {
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.about-tech {
+  margin-top: 12px;
+  padding-left: 18px;
+  color: #374151;
+}
+
+.about-tech li {
+  font-size: 0.85rem;
+}
+
+/* Footer */
+.about-footer {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
+}
+
+/* Link button en profile */
+.link-btn {
+  background: none;
+  border: none;
+  color: #2563eb;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+

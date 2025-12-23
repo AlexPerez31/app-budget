@@ -58,6 +58,12 @@ const statusImage = document.getElementById('statusImage');
 const statusMessage = document.getElementById('statusMessage');
 const statusList = document.getElementById('statusList');
 
+const debtTableBody = document.getElementById('debtTableBody');
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateProfileAlertDot();
+});
 
 
 function formatCOP(amount) {
@@ -86,7 +92,9 @@ function renderCategories() {
   const order = {
     expense: 1,
     income: 2,
-    goal: 3
+    goal: 3,
+    'debt-in': 4,
+    'debt-out': 5
   };
 
   const sortedCategories = [...categories].sort(
@@ -100,6 +108,9 @@ function renderCategories() {
     let typeLabel = 'Egreso';
     if (cat.type === 'income') typeLabel = 'Ingreso';
     if (cat.type === 'goal') typeLabel = 'Ahorro';
+    if (cat.type === 'debt-in') typeLabel = 'Por cobrar';
+    if (cat.type === 'debt-out') typeLabel = 'Por pagar';
+
 
     li.innerHTML = `
       <span style="display: flex; flex-direction: column;">
@@ -107,10 +118,12 @@ function renderCategories() {
         <span style="font-size: 12px; color: #888888;">${typeLabel}</span>
       </span>
       <small>
-        ${cat.amount ? ` ${formatCOP(cat.amount)}` : ''}
-        ${cat.type === 'goal' && cat.dueDate
-          ? ` - Límite: ${new Date(cat.dueDate).toLocaleDateString('es-CO')}`
-          : ''}
+        ${cat.amount ? formatCOP(cat.amount) : ''}
+        ${
+          (cat.type === 'goal' || cat.type.startsWith('debt')) && cat.dueDate
+            ? ` - Límite: ${new Date(cat.dueDate).toLocaleDateString('es-CO')}`
+            : ''
+        }
       </small>
       <div class="actions">
         <button onclick="editCategory(${cat.id})">✏️</button>
@@ -138,7 +151,14 @@ function renderCategorySelect() {
     return;
   }
 
-  const order = { expense: 1, income: 2, goal: 3 };
+  const order = {
+    expense: 1,
+    income: 2,
+    goal: 3,
+    'debt-in': 4,
+    'debt-out': 5
+  };
+
 
   const sorted = [...categories].sort(
     (a, b) => order[a.type] - order[b.type]
@@ -151,6 +171,8 @@ function renderCategorySelect() {
     if (cat.type === 'expense') type_n = 'Egreso';
     if (cat.type === 'income') type_n = 'Ingreso';
     if (cat.type === 'goal') type_n = 'Ahorro';
+    if (cat.type === 'debt-in') type_n = 'Por cobrar';
+    if (cat.type === 'debt-out') type_n = 'Por pagar';
     option.textContent = cat.name + " - " + type_n;
     option.dataset.type = cat.type;
     txCategorySelect.appendChild(option);
@@ -172,17 +194,31 @@ function renderRecords() {
 
     const li = document.createElement('li');
 
-    let recordClasses = 'record';
-    if (category && category.type === 'goal') {
-      recordClasses += ' goal';
+    let sign = '';
 
-      if (tx.type === 'income') {
-        recordClasses += ' goal-in';
-      } else {
-        recordClasses += ' goal-out';
+    let recordClasses = 'record';
+    if (category) {
+      if (category.type === 'goal') {
+        recordClasses += ' goal';
+        recordClasses += tx.type === 'income' ? ' goal-in' : ' goal-out';
       }
-    } else {
-      recordClasses += ` ${tx.type}`;
+
+      if (category.type === 'debt-in') {
+        recordClasses += ' debt-in';
+      }
+
+      if (category.type === 'debt-out') {
+        recordClasses += ' debt-out';
+      }
+
+      if (category.type === 'income' || category.type === 'expense') {
+        recordClasses += ` ${category.type}`;
+      }
+
+      if (tx.type === 'income') sign = '+';
+      if (tx.type === 'expense') sign = '-';
+      if (tx.type === 'debt-in') sign = '↗';
+      if (tx.type === 'debt-out') sign = '↘';
     }
     li.className = recordClasses;
 
@@ -194,7 +230,9 @@ function renderRecords() {
         <small>${formattedDate}</small>
       </div>
       <div class="record-actions">
-        <span class="record-amount">${tx.type === 'income' ? '+' : '-'}${formatCOP(tx.amount)}</span>
+        <span class="record-amount">
+          ${sign}${formatCOP(tx.amount)}
+        </span>
         <button onclick="editTransaction(${tx.id})">✏️</button>
         <button onclick="deleteTransaction(${tx.id})">🗑️</button>
       </div>
@@ -429,7 +467,6 @@ function renderReport() {
 }
 
 
-
 exportReportBtn.addEventListener('click', () => {
   const table = document.getElementById('reportTable');
 
@@ -453,9 +490,9 @@ exportReportBtn.addEventListener('click', () => {
     });
 
     ws[cellAddress] = {
-      t: 'n',        // number
-      v: amount,     // valor real
-      z: '$#,##0.00' // formato moneda Excel
+      t: 'n',       
+      v: amount,     
+      z: '$#,##0.00' 
     };
   });
 
@@ -468,6 +505,28 @@ exportReportBtn.addEventListener('click', () => {
 });
 
 
+
+function getExceededExpenseCategories() {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const monthExpenses = transactions.filter(tx => {
+    const d = new Date(tx.createdAt);
+    return tx.type === 'expense' && d >= startOfMonth && d <= now;
+  });
+
+  const expenseTotals = {};
+  monthExpenses.forEach(tx => {
+    expenseTotals[tx.categoryId] =
+      (expenseTotals[tx.categoryId] || 0) + tx.amount;
+  });
+
+  return categories.filter(cat =>
+    cat.type === 'expense' &&
+    cat.amount &&
+    (expenseTotals[cat.id] || 0) > cat.amount
+  );
+}
 
 
 function renderProfileStatus() {
@@ -491,21 +550,11 @@ function renderProfileStatus() {
 
   //Verificar límites
   const exceededCategories = [];
-
-  categories.forEach(cat => {
-    if (
-      cat.type === 'expense' &&
-      cat.amount &&
-      (expenseTotals[cat.id] || 0) > cat.amount
-    ) {
-      exceededCategories.push({
-        name: cat.name,
-        spent: expenseTotals[cat.id],
-        limit: cat.amount
-      });
-    }
+  categories.forEach(cat => { 
+    if ( cat.type === 'expense' && cat.amount && (expenseTotals[cat.id] || 0) > cat.amount ) { 
+      exceededCategories.push({ name: cat.name, spent: expenseTotals[cat.id], limit: cat.amount }); 
+    } 
   });
-
 
   //Render visual
   if (exceededCategories.length === 0) {
@@ -582,6 +631,189 @@ function formatDate(dateStr) {
 }
 
 
+function updateProfileAlertDot() {
+  const dot = document.getElementById('profileAlertDot');
+  if (!dot) return;
+
+  const exceeded = getExceededExpenseCategories();
+
+  if (exceeded.length > 0) {
+    dot.classList.remove('hidden');
+  } else {
+    dot.classList.add('hidden');
+  }
+}
+
+
+
+// DEUDAS ========
+
+document.getElementById('goToDebtsBtn').addEventListener('click', () => {
+  // cambiar vista manualmente
+  views.forEach(view =>
+    view.classList.toggle('active', view.dataset.view === 'debt')
+  );
+
+  // activar botón navbar si existe
+  navButtons.forEach(b => b.classList.remove('active'));
+  document
+    .querySelector('.nav-btn[data-target="debt"]')
+    ?.classList.add('active');
+
+
+  renderDebts();
+});
+
+
+function renderDebts() {
+  debtTableBody.innerHTML = '';
+
+  const debtInCategories  = categories.filter(c => c.type === 'debt-in');
+  const debtOutCategories = categories.filter(c => c.type === 'debt-out');
+
+  if (!debtInCategories.length && !debtOutCategories.length) return;
+
+  // ================== POR COBRAR ==================
+  if (debtInCategories.length) {
+    addDebtTitle('POR COBRAR', 'title-debt-in');
+
+    debtInCategories.forEach(cat => {
+      renderDebtCategoryBlock(cat);
+      addDebtSpacer();
+    });
+  }
+
+  // espacio extra entre secciones
+  addDebtSpacer();
+
+  // ================== POR PAGAR ==================
+  if (debtOutCategories.length) {
+    addDebtTitle('POR PAGAR', 'title-debt-out');
+
+    debtOutCategories.forEach(cat => {
+      renderDebtCategoryBlock(cat);
+      addDebtSpacer();
+    });
+  }
+
+  const exportDebtsBtn = document.getElementById('exportDebtsBtn');
+  const hasDebts =
+    categories.some(c => c.type === 'debt-in' || c.type === 'debt-out');
+  exportDebtsBtn.disabled = !hasDebts;
+
+}
+
+
+function addDebtTitle(text, cls) {
+  const tr = document.createElement('tr');
+  tr.className = cls;
+  tr.innerHTML = `<td colspan="4">${text}</td>`;
+  debtTableBody.appendChild(tr);
+}
+
+function addDebtSpacer() {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td colspan="4" class="spacer"></td>`;
+  debtTableBody.appendChild(tr);
+}
+
+
+function renderDebtCategoryBlock(category) {
+
+  // ===== fila nombre + fecha límite =====
+  const header = document.createElement('tr');
+  header.className = `debt-category ${category.type}`;
+  header.innerHTML = `
+    <td colspan="4">
+      <strong>${category.name}</strong>
+      ${category.dueDate ? ` - ${formatDate(category.dueDate)}` : ''}
+    </td>
+  `;
+  debtTableBody.appendChild(header);
+
+
+  // ===== movimientos =====
+  const movements = transactions
+    .filter(tx => tx.categoryId === category.id)
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+  let total = 0;
+
+  movements.forEach((tx, index) => {
+    total += Math.abs(tx.amount);
+
+    const tr = document.createElement('tr');
+    tr.className = 'data-row';
+    tr.innerHTML = `
+      <td>${formatDate(tx.createdAt)}</td>
+      <td>Abono ${index + 1}</td>
+      <td>${tx.description || ''}</td>
+      <td data-amount="${Math.abs(tx.amount)}">
+        $${Math.abs(tx.amount).toLocaleString('es-CO')}
+      </td>
+    `;
+    debtTableBody.appendChild(tr);
+  });
+
+  // ===== total =====
+  const totalRow = document.createElement('tr');
+  totalRow.className = 'total-row debt-total';
+  totalRow.innerHTML = `
+    <td>Total</td>
+    <td>
+      ${category.amount
+        ? `$${category.amount.toLocaleString('es-CO')}`
+        : '-'}
+    </td>
+    <td></td>
+    <td data-amount="${total}">
+      $${total.toLocaleString('es-CO')}
+    </td>
+  `;
+  debtTableBody.appendChild(totalRow);
+
+
+}
+
+function formatDate(date) {
+  return new Date(date).toLocaleDateString('es-CO');
+}
+
+
+exportDebtsBtn.addEventListener('click', () => {
+  const table = document.getElementById('debtTable');
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.table_to_sheet(table, { raw: true });
+
+  const rows = table.querySelectorAll('tbody tr');
+
+  rows.forEach((tr, rowIndex) => {
+    const amountCell = tr.querySelector('td[data-amount]');
+    if (!amountCell) return;
+
+    const amount = Number(amountCell.dataset.amount);
+    if (isNaN(amount)) return;
+
+    const cellAddress = XLSX.utils.encode_cell({
+      r: rowIndex,
+      c: 3
+    });
+
+    ws[cellAddress] = {
+      t: 'n',         
+      v: amount,      
+      z: '$#,##0.00'  
+    };
+  });
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Deudas');
+
+  XLSX.writeFile(wb, 'Deudas.xlsx');
+});
+
+
+
 // ================== ACCIONES ==================
 function deleteTransaction(id) {
   if (!confirm('¿Eliminar este registro?')) return;
@@ -597,17 +829,23 @@ function renderEditCategorySelect(selectedCategoryId) {
   const orderedCategories = [
     ...categories.filter(c => c.type === 'expense'),
     ...categories.filter(c => c.type === 'income'),
-    ...categories.filter(c => c.type === 'goal')
+    ...categories.filter(c => c.type === 'goal'),
+    ...categories.filter(c => c.type === 'debt-in'),
+    ...categories.filter(c => c.type === 'debt-out')
   ];
 
   orderedCategories.forEach(cat => {
-    type_n = ""
-    if (cat.type == "expense") type_n = "Egreso"
-    if (cat.type === 'income') type_n = "Ingreso"
-    if (cat.type === 'goal') type_n = "Ahorro"
+    let type_n = '';
+
+    if (cat.type === 'expense') type_n = 'Egreso';
+    if (cat.type === 'income') type_n = 'Ingreso';
+    if (cat.type === 'goal') type_n = 'Ahorro';
+    if (cat.type === 'debt-in') type_n = 'Por cobrar';
+    if (cat.type === 'debt-out') type_n = 'Por pagar';
+
     const option = document.createElement('option');
     option.value = cat.id;
-    option.textContent = cat.name + " - " + type_n;
+    option.textContent = `${cat.name} - ${type_n}`;
     option.dataset.type = cat.type;
 
     if (cat.id === selectedCategoryId) {
@@ -617,9 +855,9 @@ function renderEditCategorySelect(selectedCategoryId) {
     editTxCategorySelect.appendChild(option);
   });
 
-  // 🔁 aplicar lógica de flujo según categoría
   handleEditCategoryChange();
 }
+
 
 
 function handleEditCategoryChange() {
@@ -841,19 +1079,38 @@ categoryTypeSelect.addEventListener('change', () => {
   categoryMaxAmountInput.value = '';
   categoryDueDateInput.value = '';
 
+  // Ingreso
   if (type === 'income') {
     categoryAmountWrapper.classList.add('hidden');
     categoryDueDateWrapper.classList.add('hidden');
+    return;
   }
 
+  // Egreso
   if (type === 'expense') {
     categoryAmountWrapper.classList.remove('hidden');
     categoryDueDateWrapper.classList.add('hidden');
+    return;
   }
 
+  // Ahorro
   if (type === 'goal') {
     categoryAmountWrapper.classList.remove('hidden');
     categoryDueDateWrapper.classList.remove('hidden');
+    return;
+  }
+
+  // Deudas (por cobrar / por pagar)
+  if (type === 'debt-in') {
+    categoryAmountWrapper.classList.remove('hidden');
+    categoryDueDateWrapper.classList.remove('hidden');
+    return;
+  }
+
+  if (type === 'debt-out') {
+    categoryAmountWrapper.classList.remove('hidden');
+    categoryDueDateWrapper.classList.remove('hidden');
+    return;
   }
 });
 
@@ -941,12 +1198,42 @@ navButtons.forEach(button => {
 
     // ✅ VISTA PERFIL / MI ESTADO
     if (target === 'profile') {
+      updateProfileAlertDot();
       renderProfileStatus();
       renderSavingsStatus();
       renderLastBackupInfo();
     }
+
+    if (target === 'debt') {
+      renderDebts();
+    }
+
   });
 });
+
+
+const goToDebtsBtn = document.getElementById('goToDebtsBtn');
+
+goToDebtsBtn.addEventListener('click', () => {
+  // desactivar botones activos
+  navButtons.forEach(b => b.classList.remove('active'));
+
+  // cambiar vista
+  views.forEach(view => {
+    view.classList.toggle('active', view.dataset.view === 'debt');
+  });
+});
+
+document.getElementById('goToAboutBtn').addEventListener('click', () => {
+  // cambiar vista
+  views.forEach(view =>
+    view.classList.toggle('active', view.dataset.view === 'about')
+  );
+
+  // desactivar navbar
+  navButtons.forEach(b => b.classList.remove('active'));
+});
+
 
 
 reportApplyFilterBtn.addEventListener('click', applyReportFilter);
@@ -995,7 +1282,8 @@ categoryForm.addEventListener('submit', e => {
       : null;
 
   const dueDate =
-    type === 'goal' && categoryDueDateInput.value
+    (type === 'goal' || type === 'debt-in' || type === 'debt-out') &&
+    categoryDueDateInput.value
       ? categoryDueDateInput.value
       : null;
 
@@ -1004,9 +1292,11 @@ categoryForm.addEventListener('submit', e => {
     return;
   }
 
-  if (type === 'goal' && !categoryMaxAmountInput.value) {
-    alert('El ahorro debe tener un monto objetivo');
-    return;
+  // ⛔ Ahorros y deudas requieren monto
+  if ((type === 'goal' || type === 'debt-in' || type === 'debt-out') 
+    && !categoryMaxAmountInput.value) {
+  alert('La deuda debe tener un monto');
+  return;
   }
 
   const normalizedName = name.toLowerCase();
@@ -1024,7 +1314,7 @@ categoryForm.addEventListener('submit', e => {
   if (editingCategoryId) {
     const category = categories.find(c => c.id === editingCategoryId);
     if (!category) return;
-    console.log(amount)
+
     category.name = name;
     category.type = type;
     category.amount = amount;
@@ -1041,7 +1331,6 @@ categoryForm.addEventListener('submit', e => {
       createdAt: new Date().toISOString()
     });
   }
-  // =======================================================
 
   localStorage.setItem('categories', JSON.stringify(categories));
   categoryForm.reset();
@@ -1064,12 +1353,18 @@ txForm.addEventListener('submit', e => {
   const categoryType = selectedOption.dataset.type;
   let txType = categoryType;
 
+  // Ahorro
   if (categoryType === 'goal') {
     if (!txFlowSelect.value) {
       alert('Define si el ahorro es entrada o salida');
       return;
     }
     txType = txFlowSelect.value;
+  }
+
+  // Deudas
+  if (categoryType === 'debt-in' || categoryType === 'debt-out') {
+    txType = categoryType;
   }
 
   transactions.push({
@@ -1086,6 +1381,7 @@ txForm.addEventListener('submit', e => {
 
   renderRecords();
   renderSavingsStatus();
+  updateProfileAlertDot();
 });
 
 
@@ -1095,14 +1391,25 @@ txCategorySelect.addEventListener('change', () => {
 
   const type = selected.dataset.type;
 
+  // Ahorro → necesita definir flujo
   if (type === 'goal') {
     txFlowSelect.disabled = false;
     txFlowSelect.value = '';
-  } else {
+    return;
+  }
+
+  // Deudas → NO usan flujo
+  if (type === 'debt-in' || type === 'debt-out') {
     txFlowSelect.disabled = true;
     txFlowSelect.value = '';
+    return;
   }
+
+  // Income / Expense normales
+  txFlowSelect.disabled = true;
+  txFlowSelect.value = '';
 });
+
 
 
 // ================== FORM EDITAR TRANSACCIONES ==================
@@ -1150,6 +1457,7 @@ editForm.addEventListener('submit', e => {
   renderRecords();
   editingTransactionId = null;
   renderSavingsStatus();
+  updateProfileAlertDot();
 });
 
 
